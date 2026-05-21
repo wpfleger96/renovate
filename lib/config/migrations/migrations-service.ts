@@ -112,6 +112,7 @@ export class MigrationsService {
     ['masterIssueLabels', 'dependencyDashboardLabels'],
     ['regexManagers', 'customManagers'],
     ['baseBranches', 'baseBranchPatterns'],
+    ['httpCacheTtlDays', 'repositoryCacheHttpCacheTtlDays'],
     ['renovate-config-presets', 'renovate-config'],
   ]);
 

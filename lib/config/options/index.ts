@@ -3415,7 +3415,7 @@ const options: Readonly<RenovateOptions>[] = [
     supportedPlatforms: ['github'],
   },
   {
-    name: 'httpCacheTtlDays',
+    name: 'repositoryCacheHttpCacheTtlDays',
     description: 'Maximum duration in days to keep HTTP cache entries.',
     type: 'integer',
     stage: 'repository',
