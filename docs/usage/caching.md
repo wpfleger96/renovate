@@ -147,13 +147,13 @@ This is the most important lever that a self-hosted administrator has to **??**.
 
 The Package Cache contains:
 
-<!-- prettier-ignore TODO #39090 -->
-
+<!-- markdownlint-disable MD007 -->
+<!-- prettier-ignore -->
 - **??**
-  - The full list of namespaces that are included in the [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride) docs
+    - The full list of namespaces that are included in the [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride) docs
 - GitHub GraphQL data for GitHub releases/tags
-  - If the repo is public, any tags/releases will be stored in the cache
-  - If the repo is private, any tags/releases will be cached in-memory in the Renovate process (and subsequent Renovate runs will need to re-fetch the data)
+    - If the repo is public, any tags/releases will be stored in the cache
+    - If the repo is private, any tags/releases will be cached in-memory in the Renovate process (and subsequent Renovate runs will need to re-fetch the data)
 
 #### Where is it stored?
 
