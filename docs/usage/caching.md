@@ -147,6 +147,8 @@ This is the most important lever that a self-hosted administrator has to **??**.
 
 The Package Cache contains:
 
+<!-- prettier-ignore TODO #39090 -->
+
 - **??**
   - The full list of namespaces that are included in the [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride) docs
 - GitHub GraphQL data for GitHub releases/tags
