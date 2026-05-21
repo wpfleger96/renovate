@@ -1,10 +1,49 @@
-As a tool for updating dependencies, Renovate needs to interact with a number of different [Datasources] to be able to determine what update(s) are available for a given repository.
+As a tool for updating dependencies, Renovate needs to interact with many different [Datasources] to determine what update(s) are available for a given repository, requiring a large amount of outbound HTTP traffic.
 
 To avoid unnecessary stress on upstream services, [like Maven Central](https://www.sonatype.com/blog/maven-central-and-the-tragedy-of-the-commons), as well as making Renovate runs more efficient, Renovate works to heavily cache external HTTP requests where possible.
 
 As per [RFC7232](https://www.rfc-editor.org/info/rfc7232/), Renovate supports `Cache-Control` and `ETag` HTTP **??**
 
 <!-- TODO: https://renovatebot.slack.com/archives/C0B0JN55L6S/p1779359737078739 -->
+
+## Factors affecting caching
+
+There are a number of operational factors that may affect whether Renovate caches data.
+
+Firstly, depending on how Renovate is run, it may be possible for better caching to apply.
+
+For instance, if Renovate is run with a single repository at a time:
+
+```sh
+# newlines for readability purposes only
+env RENOVATE_TOKEN=...
+  renovate --platform github
+  renovatebot/renovate
+
+# then run another repo
+env RENOVATE_TOKEN=...
+  renovate --platform github
+  containerbase/base
+```
+
+In this case, the in-memory cache Renovate holds will be lost each time the Renovate process exits.
+
+However, if you run multiple repositories in a single Renovate process:
+
+```sh
+# newlines for readability purposes only
+env RENOVATE_TOKEN=...
+  renovate --platform github
+  renovatebot/renovate containerbase/base
+```
+
+In this case, the in-memory cache will be shared between all repositories being processed.
+
+In both cases, we are executing these processes on the same host (whether it's a VM, container or your personal laptop) and so the on-disk caches (if configured) will be shared between Renovate runs.
+
+Secondly, Renovate **??**. See [] and [] below for more details.
+
+<details>
 
 In addition, there are internal caches set on **??**
 
@@ -26,9 +65,25 @@ However, **??**
     <br>
     It is ideal if you have a proxy/etc to handle package cahhing to avoid **??**
 
-Renovate operates **??** types of cache:
+</details>
 
 ## Cache types
+
+Renovate operates **??** types of cache:
+
+### In-memory cache
+
+#### What is in it?
+
+#### Where is it stored?
+
+In-memory.
+
+As soon as the Renovate process exits, all data is lost.
+
+#### Which options configure it?
+
+It is not configurable.
 
 ### Repository Cache
 
@@ -60,7 +115,7 @@ This generally allows Renovate to not need to perform potentially expensive work
 
 #### Where is it stored?
 
-The presence of the Repository Cache is defined by the global self-hosted configuration [`repositoryCache`](./self-hosted-configuration.md#repositorycache), which is disabled by default.
+By default, there is no Repository Cache as [`repositoryCache=disabled`](./self-hosted-configuration.md#repositorycache).
 
 If enabled, this cache data is stored by default in the local filesystem, under the [`cacheDir`](./self-hosted-configuration.md#cachedir) location.
 
@@ -80,6 +135,23 @@ Backends:
 
 ### Package Cache
 
+The Package Cache includes metadata about package releases, their changelogs, and HTTP responses from [Datasources].
+It is intended to be used for **??**, and the **??**.
+
+#### What is in it?
+
+The Package Cache contains:
+
+- **??**
+  - The full list of namespaces that are included in the [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride) docs
+- GitHub GraphQL data for GitHub releases/tags
+  - If the repo is public, any tags/releases will be stored in the cache
+  - If the repo is private, any tags/releases will be cached in-memory in the Renovate process (and subsequent Renovate runs will need to re-fetch the data)
+
+#### Where is it stored?
+
+#### Which options configure it?
+
 ### ...
 
 ## Recommended performance improvements
@@ -96,18 +168,23 @@ For topology:
 
 ## FAQs
 
-## Other **??** relevant
+### What's the difference between the "soft" and "hard" cache?
 
-- [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride)
-- [`cacheHardTtlMinutes`](./self-hosted-configuration.md#cachehardttlminutes)
-- `prCacheSyncMaxPages`
-- persistRepoData
+**??**
 
 ### Is the data encrypted in the cache(s)?
 
 No. Data is currently **??** and then Base64-encoded.
 
 It is recommended to **??**.
+
+### What happens to HTTP calls that require authentication?
+
+### What happens to private packages being retrieved?
+
+Private package **??**
+
+It's [`cachePrivatePackages`](./self-hosted-configuration.md#cacheprivatepackages)
 
 ### Does Renovate store a copy of the repo?
 
@@ -117,71 +194,9 @@ but no
 
 ---
 
-```markdown
-Renovate has a rich caching system with several distinct layers:
+## Other **??** relevant
 
----
-
-## Renovate Cache Types
-
-### 1. Repository Cache (`lib/util/cache/repository/`)
-
-Persists per-repository metadata across Renovate runs. Stores branch states, PR info, HTTP responses, and extraction fingerprints.
-
-**Backends**: Local filesystem (default), S3, or disabled
-**Config**: `repositoryCache` (`enabled`/`disabled`/`reset`), `repositoryCacheType` (e.g. `s3://...`)
-
-### 2. Package Cache (`lib/util/cache/package/`)
-
-Caches datasource/HTTP responses with configurable TTLs. This is the main cache for version lookups across 100+ package manager namespaces.
-
-**Backends**: File (cacache), Redis, or SQLite (experimental via `RENOVATE_X_SQLITE_PACKAGE_CACHE`)
-**Config**: `redisUrl`, `cacheTtlOverride`, `cacheHardTtlMinutes`, `cacheDir`
-
-### 3. Memory Cache (`lib/util/cache/memory/`)
-
-In-memory key-value store scoped to a single Renovate run. No persistence, used for deduplication within a session.
-
-### 4. HTTP Cache (`lib/util/http/cache/`)
-
-Caches HTTP responses using ETags/Last-Modified headers. Has three provider strategies:
-
-- **Memory**: volatile, session-only
-- **Repository**: persisted in the repository cache
-- **Package**: persisted in the package cache with TTL
-
-**Config**: `httpCacheTtlDays`, `cachePrivatePackages`
-
-### 5. Git Branch Caches (within Repository Cache)
-
-Four specialized caches stored inside the repository cache, each keyed by branch + commit SHA:
-
-- Behind-base-branch status
-- Merge conflict status
-- External modification status
-- Last update date
-
-### 6. Platform PR Caches (within Repository Cache)
-
-Per-platform PR list caches (GitLab, Gitea, Bitbucket, Bitbucket Server, Forgejo) stored under `platform.{provider}.pullRequestsCache` in the repository cache.
-
-### 7. GitHub GraphQL Cache (`lib/util/github/graphql/cache-strategies/`)
-
-Specialized cache for GitHub releases/tags with a 30-day TTL and reconciliation logic. Can use either memory or package cache as its backend.
-
----
-
-## Summary
-
-| Type           | Persistence  | Backends              | Purpose                      |
-| -------------- | ------------ | --------------------- | ---------------------------- |
-| Repository     | Per-run      | Local FS, S3          | Branch/PR metadata per repo  |
-| Package        | Cross-run    | File, Redis, SQLite   | Datasource version lookups   |
-| Memory         | Session only | RAM                   | Deduplication within a run   |
-| HTTP           | Varies       | Memory, Repo, Package | HTTP response caching        |
-| Git            | Per-run      | (in repo cache)       | Branch state tracking        |
-| Platform PR    | Per-run      | (in repo cache)       | PR list caching per platform |
-| GitHub GraphQL | Cross-run    | Memory/Package        | GitHub release/tag data      |
-
-The two main ones you were thinking of are **Repository Cache** (repo metadata, branches, PRs) and **Package Cache** (datasource/version data) — they're also the ones with the most configuration surface.
-```
+- [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride)
+- [`cacheHardTtlMinutes`](./self-hosted-configuration.md#cachehardttlminutes)
+- `prCacheSyncMaxPages`
+- persistRepoData
