@@ -379,6 +379,10 @@ When `cacheHardTtlMinutes` is set, for example to 60, Renovate will use the stal
 
 ## `cachePrivatePackages`
 
+<!-- prettier-ignore -->
+!!! tip
+    See the [caching deep-dive](./caching.md#package-cache) for more information about how the Package Cache works.
+
 In the self-hosted setup, use option to enable caching of private packages to improve performance.
 
 ## `cacheTtlOverride`
