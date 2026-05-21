@@ -346,6 +346,10 @@ For example:
 
 ## `cacheHardTtlMinutes`
 
+<!-- prettier-ignore -->
+!!! tip
+    See the [caching deep-dive](./caching.md#package-cache) for more information about how the Package Cache works.
+
 This experimental feature configures the physical lifetime of cache entries.
 Renovate internally uses two types of Time-to-Live (TTL) for its cache:
 
@@ -378,6 +382,10 @@ When `cacheHardTtlMinutes` is set, for example to 60, Renovate will use the stal
 In the self-hosted setup, use option to enable caching of private packages to improve performance.
 
 ## `cacheTtlOverride`
+
+<!-- prettier-ignore -->
+!!! tip
+    See the [caching deep-dive](./caching.md#package-cache) for more information about how the Package Cache works.
 
 Use this key-value map to override the default package cache TTL values for a specific namespace.
 This object contains pairs of namespaces and their corresponding TTL values in minutes.
@@ -1074,6 +1082,10 @@ Set as an integer.
 Default is no limit.
 
 ## `presetCachePersistence`
+
+<!-- prettier-ignore -->
+!!! tip
+    See the [caching deep-dive](./caching.md#package-cache) for more information about how the Package Cache works.
 
 When this feature is enabled, resolved presets will be cached in Renovate's package cache, enabling reuse across multiple repositories.
 

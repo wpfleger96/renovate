@@ -1,10 +1,8 @@
-As a tool for updating dependencies, Renovate needs to interact with many different [Datasources] to determine what update(s) are available for a given repository, requiring a large amount of outbound HTTP traffic.
+As a tool for updating dependencies, Renovate needs to interact with many different [Datasources](./modules/datasource/index.md) to determine what update(s) are available for a given repository, requiring a large amount of outbound HTTP traffic.
 
 To avoid unnecessary stress on upstream services, [like Maven Central](https://www.sonatype.com/blog/maven-central-and-the-tragedy-of-the-commons), as well as making Renovate runs more efficient, Renovate works to heavily cache external HTTP requests where possible.
 
-As per [RFC7232](https://www.rfc-editor.org/info/rfc7232/), Renovate supports `Cache-Control` and `ETag` HTTP **??**
-
-<!-- TODO: https://renovatebot.slack.com/archives/C0B0JN55L6S/p1779359737078739 -->
+When Renovate encounters `Cache-Control` headers, it will abide by them, as well as perform conditional HTTP requests when `ETag` HTTP headers are received.
 
 ## Factors affecting caching
 
@@ -43,7 +41,7 @@ In both cases, the Renovate runs execute on the same host (whether it's a VM, co
 
 Secondly, Renovate will conditionally cache based on whether it detects it is interacting with a private repository and/or a private package. See [What happens to HTTP calls that require authentication?](#what-happens-to-http-calls-that-require-authentication) and [What happens to private packages being retrieved?](#what-happens-to-private-packages-being-retrieved) below for more details.
 
-Finally, if you're running Renovate on multiple hosts (for instance across a Kubernetes cluster or on your automated build platform like GitLab CI), it is strongly recommended to use a **??**..
+Finally, if you're running Renovate across many hosts (for instance across a Kubernetes cluster or on your automated build platform like GitLab CI), [we recommend](#recommended-performance-improvements) using a persistent Package Cache, and ideally a persistent Repository Cache, too.
 
 <details>
 
@@ -95,54 +93,55 @@ It is not configurable.
 
 The Repository Cache includes metadata about repositories to reduce the work that Renovate will need to perform on future runs.
 
+The Repository Cache is primarily aimed at reducing the work that Renovate needs to be perform each time it executes against a repository, and limiting the API requests it needs to send to the configured Platform.
+
 <!-- prettier-ignore -->
 !!! note
     This only contains **metadata** about the repository, not the repository itself.
     <br>
-    This data includes very similar data to what is seen in the debug logs.
+    This includes similar data to what Renovate logs at `DEBUG` log level.
 
 #### What is in it?
 
-This cache includes:
+This cache includes (among other information):
 
+- `configFileName`: this repository's filename i.e. `renovate.json5`
 - `branches`: information about the branches Renovate is currently managing, and:
   - whether they're associated with a PR
   - what update(s) are in the given branch
   - whether the branch is conflicted/behind the base branch or if it's been modified by someone other than Renovate
-  -
-- `scan`: **??**
-- `platform.{github,gitlab,gitea,bitbucket,...}.pullRequestsCache`
-- `httpCache`/`httpCacheHead`:
-- `semanticCommits`: a **??** for [`semanticCommits`](./configuration-options.md#semanticcommits) detection
-- `onboardingBranchCache`, `reconfigureBranchCache`: cache for when using **??**
+- `onboardingBranchCache`, `reconfigureBranchCache`: cache for the state of the onboarding/reconfigure branches
+- `platform`: specific information for the given Platform, such as a cache of all PRs
+- `httpCache`/`httpCacheHead`: cached repository-specific HTTP responses
+- `semanticCommits`: the current calculation for the repo's [`semanticCommits`](./configuration-options.md#semanticcommits)
 - `prComments`: any PR comments that Renovate has made on PRs
 
 This generally allows Renovate to not need to perform potentially expensive work (like extracting all package files in a repository) if the repository has not changed.
 
 #### Where is it stored?
 
-By default, there is no Repository Cache as [`repositoryCache=disabled`](./self-hosted-configuration.md#repositorycache).
+By default, there is no Repository Cache as [`repositoryCache=disabled`](./self-hosted-configuration.md#repositorycache) is the default.
 
 If enabled, this cache data is stored by default in the local filesystem, under the [`cacheDir`](./self-hosted-configuration.md#cachedir) location.
 
 It can be configured to be stored in an S3-compatible location using i.e. [`repositoryCacheType=s3://my-bucket/some-path/repo-cache`](./self-hosted-configuration.md#repositorycachetype).
 
-Configuration:
-Backends:
-
-- Local filesystem (default)
-- S3-compatible interface
-
 #### Which options configure it?
 
-[`repositoryCache`](./self-hosted-configuration.md#repositorycachetype)
-[`repositoryCacheType`](./self-hosted-configuration.md#repositorycachetype)
-[`repositoryCacheForceLocal`](./self-hosted-configuration.md#repositorycachetype)
+- [`repositoryCache`](./self-hosted-configuration.md#repositorycachetype): whether to enable it
+- [`repositoryCacheType`](./self-hosted-configuration.md#repositorycachetype): where the Repository Cache should be stored
+- [`repositoryCacheForceLocal`](./self-hosted-configuration.md#repositorycachetype): whether to also persist it to the local filesystem if using `repositoryCacheType=s3://...`
 
 ### Package Cache
 
-The Package Cache includes metadata about package releases, their changelogs, and HTTP responses from [Datasources].
-It is intended to be used for **??**, and the **??**.
+The Package Cache includes metadata about package releases, their changelogs, and HTTP responses from [Datasources](./modules/datasource/index.md).
+
+The Package Cache is primarily aimed at improving quality-of-life for upstream providers, such as package registries.
+This is the most important lever that a self-hosted administrator has to **??**.
+
+<!-- prettier-ignore -->
+!!! tip
+    Tuning this **??** is a very **??**, and that helps keep the ecosystem **??**.
 
 #### What is in it?
 
@@ -156,40 +155,32 @@ The Package Cache contains:
 
 #### Where is it stored?
 
-```markdown
-Backends and their on-disk formats:
+By default, the Package Cache is stored in the local filesystem, under the [`cacheDir`](./self-hosted-configuration.md#cachedir) location.
 
-Redis (recommended for shared/distributed use):
+When using the local filesystem, the [cacache](https://www.npmjs.com/package/cacache) library is used.
 
-- Keys follow the pattern {prefix}{namespace}-{key} (prefix set by redisPrefix)
-- Each key's value is JSON: { "value": "<base64-compressed payload>", "expiry": "<ISO timestamp>" }
-- Redis native TTL (EX) is also set for automatic cleanup by Redis itself
-- Supports standard (redis://) and cluster (redis+cluster:// or rediss+cluster://) modes
-- From your live Redis: 895 total keys, 601 seconds TTL remaining on a sample key
+When the [`redisUrl`](./self-hosted-configuration.md#redisurl) self-hosted configuration option is set, the Package Cache will be stored in Redis.
 
-Example key from your Redis: datasource-npm:cache-provider-https://registry.npmjs.org/nock
-Structure: { "value": "<24KB of base64-compressed data>", "expiry": "2026-05-28T10:44:44.095+01:00" }
+<!-- prettier-ignore -->
+!!! warning
+    Experimental features might be changed or even removed at any time.
 
-File (default, uses cacache library):
-
-- Stored at {cacheDir}/renovate/renovate-cache-v1
-- Content format matches Redis: JSON with { "value": "<base64-compressed>", "expiry": "<ISO>" }
-- An in-memory LRU map (up to 100k entries, ~5MB) tracks expiry times to speed up cleanup
-- At shutdown, scans for and deletes expired entries
-
-SQLite (experimental, via RENOVATE_X_SQLITE_PACKAGE_CACHE=true):
-
-- Stored at {cacheDir}/renovate/renovate-cache-sqlite/db.sqlite
-- Schema: package_cache(namespace TEXT, key TEXT, expiry INTEGER, data BLOB, PRIMARY KEY(namespace, key))
-- data is Brotli-compressed JSON (quality=3, text mode)
-- Uses WAL journal mode for concurrency
-- Lock timeout configurable via RENOVATE_X_SQLITE_BUSY_TIMEOUT (default 5000ms)
-- At shutdown, DELETE FROM package_cache WHERE expiry <= unixepoch() cleans expired rows
-```
+Renovate has experimental support for using SQLite as the Package Cache backend, which can be configured using [`RENOVATE_X_SQLITE_PACKAGE_CACHE`](./self-hosted-experimental.md#renovate_x_sqlite_package_cache).
 
 #### Which options configure it?
 
-### ...
+- [`redisUrl`](./self-hosted-configuration.md#redisurl)
+- [`redisPrefix`](./self-hosted-configuration.md#redisprefix)
+- [`presetCachePersistence`](./self-hosted-configuration.md#presetcachepersistence)
+- [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride)
+- [`cacheHardTtlMinutes`](./self-hosted-configuration.md#cachehardttlminutes)
+- [`prCacheSyncMaxPages`](./self-hosted-configuration.md#prcachesyncmaxpages)
+- [`RENOVATE_X_SQLITE_PACKAGE_CACHE`](./self-hosted-experimental.md#renovate_x_sqlite_package_cache).
+- [`RENOVATE_X_SQLITE_BUSY_TIMEOUT`](./self-hosted-experimental.md#renovate_x_sqlite_busy_timeout)
+
+## Other related configuration options
+
+- [`persistRepoData`](./self-hosted-configuration.md#persistrepodata)
 
 ## Recommended performance improvements
 
@@ -215,7 +206,9 @@ In the case that **??**, for instance, `go mod tidy`, then **??**.
 
 Where possible, Renovate will centralise these cache locations under [`cacheDir`](./self-hosted-configuration.md#cachedir), i.e. in `$cacheDir/others`.
 
-### How do I use the **??**
+This directry can **??** over time https://github.com/renovatebot/renovate/discussions/33612
+
+### How do I use the **??** with S3-compatbile?
 
 ### Where are HTTP responses cached?
 
@@ -289,6 +282,13 @@ No. Data is currently **??** and then Base64-encoded.
 
 It is recommended to **??**.
 
+### Does Renovate cache HTTP calls that don't return a `Cache-Control` header?
+
+**??**
+
+No, Renovate will not.
+Renovate treats the absence of a **??**
+
 ### What happens to HTTP calls that require authentication?
 
 ### What happens to private packages being retrieved?
@@ -302,6 +302,18 @@ It's [`cachePrivatePackages`](./self-hosted-configuration.md#cacheprivatepackage
 - persistRepoData
 
 but no
+
+### How do I invalidate the cache?
+
+It is not currently possible for a _user_ to invalidate the cache.
+
+A self-hosted administrator can **??**:
+
+- Repository Cache:
+  - **??** `reset`
+  - Delete the file in S3
+- Package Cache:
+  - foo
 
 ---
 
