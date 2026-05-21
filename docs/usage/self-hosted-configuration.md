@@ -1248,10 +1248,18 @@ Override this object if you want to change the URLs that Renovate links to, e.g.
 
 ## `redisPrefix`
 
+<!-- prettier-ignore -->
+!!! tip
+    See the [caching deep-dive](./caching.md#package-cache) for more information about how the Package Cache works.
+
 If this value is set then Renovate will prepend this string to the name of all Redis cache entries used in Renovate.
 It's only used if `redisUrl` is configured.
 
 ## `redisUrl`
+
+<!-- prettier-ignore -->
+!!! tip
+    See the [caching deep-dive](./caching.md#package-cache) for more information about how the Package Cache works.
 
 If this value is set then Renovate will use Redis for its global cache instead of the local file system.
 The global cache is used to store lookup results (e.g. dependency versions and changelogs) between repositories and runs.
@@ -1304,17 +1312,29 @@ Example:
 
 ## `repositoryCache`
 
+<!-- prettier-ignore -->
+!!! tip
+    See the [caching deep-dive](./caching.md#repository-cache) for more information about how the Repository Cache works.
+
 Set this to `"enabled"` to have Renovate maintain a JSON file cache per-repository to speed up extractions.
 Set to `"reset"` if you ever need to bypass the cache and have it overwritten.
 JSON files will be stored inside the `cacheDir` beside the existing file-based package cache.
 
 ## `repositoryCacheForceLocal`
 
+<!-- prettier-ignore -->
+!!! tip
+    See the [caching deep-dive](./caching.md#repository-cache) for more information about how the Repository Cache works.
+
 If set to `true`, Renovate will persist repository cache locally after uploading to S3.
 
 This is useful if you want to keep a local copy of the cache for debugging purposes or for faster access to the cache.
 
 ## `repositoryCacheType`
+
+<!-- prettier-ignore -->
+!!! tip
+    See the [caching deep-dive](./caching.md#repository-cache) for more information about how the Repository Cache works.
 
 ```ts title="Set repositoryCacheType to an S3 URI to enable S3 backed repository cache"
 {

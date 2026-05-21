@@ -66,28 +66,17 @@ If enabled, this cache data is stored by default in the local filesystem, under 
 
 It can be configured to be stored in an S3-compatible location using i.e. [`repositoryCacheType=s3://my-bucket/some-path/repo-cache`](./self-hosted-configuration.md#repositorycachetype).
 
-It can be configured to **??** into an
-
-When
-
-The repository cache **??**
-
-Additionally, the repository cache includes **??**
-
 Configuration:
-
-- [``]()
-- [``]()
-- [``]()
-- [``]()
-- [``]()
-
 Backends:
 
 - Local filesystem (default)
 - S3-compatible interface
 
 #### Which options configure it?
+
+[`repositoryCache`](./self-hosted-configuration.md#repositorycachetype)
+[`repositoryCacheType`](./self-hosted-configuration.md#repositorycachetype)
+[`repositoryCacheForceLocal`](./self-hosted-configuration.md#repositorycachetype)
 
 ### Package Cache
 
