@@ -192,15 +192,15 @@ Renovate has experimental support for using SQLite as the Package Cache backend,
 
 #### Which options configure it?
 
-- [`redisUrl`](./self-hosted-configuration.md#redisurl)
-- [`redisPrefix`](./self-hosted-configuration.md#redisprefix)
-- [`presetCachePersistence`](./self-hosted-configuration.md#presetcachepersistence)
-- [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride)
-- [`cacheHardTtlMinutes`](./self-hosted-configuration.md#cachehardttlminutes)
-- [`prCacheSyncMaxPages`](./self-hosted-configuration.md#prcachesyncmaxpages)
-- [`cachePrivatePackages`](./self-hosted-configuration.md#cacheprivatepackages)
-- [`RENOVATE_X_SQLITE_PACKAGE_CACHE`](./self-hosted-experimental.md#renovate_x_sqlite_package_cache).
-- [`RENOVATE_X_SQLITE_BUSY_TIMEOUT`](./self-hosted-experimental.md#renovate_x_sqlite_busy_timeout)
+- [`redisUrl`](./self-hosted-configuration.md#redisurl): when configured, use Redis for the Package Cache
+- [`redisPrefix`](./self-hosted-configuration.md#redisprefix): a prefix for the key names in Redis
+- [`presetCachePersistence`](./self-hosted-configuration.md#presetcachepersistence): whether to cache remote presets in the Package Cache
+- [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride): overrides for the expiry/TTL of specified datasource cache entries
+- [`cacheHardTtlMinutes`](./self-hosted-configuration.md#cachehardttlminutes): maximum duration to keep datasource cache entries
+- [`cachePrivatePackages`](./self-hosted-configuration.md#cacheprivatepackages): cache private packages (**see below ??**)
+- [`RENOVATE_X_SQLITE_PACKAGE_CACHE`](./self-hosted-experimental.md#renovate_x_sqlite_package_cache): use SQLite as the Package Cache backend
+- [`RENOVATE_X_SQLITE_BUSY_TIMEOUT`](./self-hosted-experimental.md#renovate_x_sqlite_busy_timeout): when using SQLite, increase the busy timeout
+- [`prCacheSyncMaxPages`](./self-hosted-configuration.md#prcachesyncmaxpages): maximum number of pages to fetch when syncing the pull request cache
 
 ## Other related configuration options
 
