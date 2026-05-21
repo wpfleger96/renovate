@@ -8,11 +8,11 @@ As per [RFC7232](https://www.rfc-editor.org/info/rfc7232/), Renovate supports `C
 
 ## Factors affecting caching
 
-There are a number of operational factors that may affect whether Renovate caches data.
+Renovate will conditionally cache data based on a few factors.
 
-Firstly, depending on how Renovate is run, it may be possible for better caching to apply.
+Firstly, depending on how you run Renovate, it may be possible to improve caching.
 
-For instance, if Renovate is run with a single repository at a time:
+For instance, if Renovate runs against a single repository at a time:
 
 ```sh
 # newlines for readability purposes only
@@ -26,7 +26,7 @@ env RENOVATE_TOKEN=...
   containerbase/base
 ```
 
-In this case, the in-memory cache Renovate holds will be lost each time the Renovate process exits.
+In this case, the In-Memory Cache Renovate holds will be lost each time the Renovate process exits.
 
 However, if you run multiple repositories in a single Renovate process:
 
@@ -37,11 +37,13 @@ env RENOVATE_TOKEN=...
   renovatebot/renovate containerbase/base
 ```
 
-In this case, the in-memory cache will be shared between all repositories being processed.
+In this case, the In-Memory Cache will be shared between all repositories being processed.
 
-In both cases, we are executing these processes on the same host (whether it's a VM, container or your personal laptop) and so the on-disk caches (if configured) will be shared between Renovate runs.
+In both cases, the Renovate runs execute on the same host (whether it's a VM, container or your personal laptop) and so the on-disk caches (if configured) will be shared between Renovate runs.
 
-Secondly, Renovate **??**. See [] and [] below for more details.
+Secondly, Renovate will conditionally cache based on whether it detects it is interacting with a private repository and/or a private package. See [What happens to HTTP calls that require authentication?](#what-happens-to-http-calls-that-require-authentication) and [What happens to private packages being retrieved?](#what-happens-to-private-packages-being-retrieved) below for more details.
+
+Finally, if you're running Renovate on multiple hosts (for instance across a Kubernetes cluster or on your automated build platform like GitLab CI), it is strongly recommended to use a **??**..
 
 <details>
 
@@ -69,11 +71,15 @@ However, **??**
 
 ## Cache types
 
-Renovate operates **??** types of cache:
+Renovate uses 3 types of cache:
 
-### In-memory cache
+### In-Memory Cache
+
+The In-Memory Cache includes any short-lived data which is worth caching within a given Renovate run (for a single repo or against multiple), but is not worth persisting for more long-term access.
 
 #### What is in it?
+
+Renovate stores **??**, for instance when retrieving HTTP-/npm-based config presets, getting the public key for a Hex registry or for listing status checks on a GitHub branch.
 
 #### Where is it stored?
 
@@ -203,7 +209,23 @@ For topology:
 
 **??**
 
-### **??** HTTP cache
+### What's happens to package manager caches?
+
+In the case that **??**, for instance, `go mod tidy`, then **??**.
+
+Where possible, Renovate will centralise these cache locations under [`cacheDir`](./self-hosted-configuration.md#cachedir), i.e. in `$cacheDir/others`.
+
+### How do I use the **??**
+
+### Where are HTTP responses cached?
+
+HTTP responses are cached between **both** the Repository Cache and the Package Cache.
+
+Certain HTTP requests - such as the repository's PRs and the Dependency Dashboard Issue - make more sense to be tied to the Repository Cache, and others - such as HTTP calls to Datasources - make sense to be in the Package Cache.
+
+Additionally, some HTTP requests are only stored in the In-Memory Cache, and not persisted between Renovate runs.
+
+The cache used for HTTP responses is not user-configurable.
 
 ````markdown
 There's no automatic/global selection — the provider is passed **explicitly per-request** via a `cacheProvider` option in the HTTP options. Each datasource or platform chooses its own provider at the call site.
@@ -222,7 +244,6 @@ const cacheProvider = new PackageHttpCacheProvider({
 });
 const options: HttpOptions = { cacheProvider };
 ```
-````
 
 ```ts
 // maven/util.ts — two separate instances for different namespaces
@@ -260,7 +281,6 @@ cacheProvider: memCacheProvider;
 **`aggressiveRepoCacheProvider`** is a variant of `repoCacheProvider` with `aggressive: true`, which adds a "synced" flag — once a URL has been fetched and written to the repo cache in the current run, subsequent calls to that URL skip the server entirely and serve directly from cache (via `bypassServer()`). The regular `repoCacheProvider` only does conditional requests (ETag/304), not full bypasses.
 
 So in summary: **the choice of provider is hardcoded by each datasource/platform**, not configured by the user. The user can influence behaviour indirectly via `cacheTtlOverride` (affects `PackageHttpCacheProvider` TTLs) and `cachePrivatePackages` (affects whether `PackageHttpCacheProvider` caches responses without a `public` Cache-Control header).
-
 ````
 
 ### Is the data encrypted in the cache(s)?
@@ -277,13 +297,11 @@ Private package **??**
 
 It's [`cachePrivatePackages`](./self-hosted-configuration.md#cacheprivatepackages)
 
-
 ### Does Renovate store a copy of the repo?
 
 - persistRepoData
 
 but no
-
 
 ---
 
@@ -293,7 +311,6 @@ but no
 - [`cacheHardTtlMinutes`](./self-hosted-configuration.md#cachehardttlminutes)
 - `prCacheSyncMaxPages`
 - persistRepoData
-
 
 ---
 
@@ -305,14 +322,17 @@ Here's a summary of the cache-related questions found in the database, grouped b
 ## Repo Cache questions
 
 **S3 / storage backends**
+
 - [#42977](https://github.com/renovatebot/renovate/discussions/42977) — S3 cache doesn't work with Cloudflare R2 ("Region is missing" error with AWS SDK v3)
 - [#33612](https://github.com/renovatebot/renovate/discussions/33612) — "Clarify what kinds of cache Renovate uses and what's recommended for on-prem CI" — explicitly asks for docs distinguishing repo cache (S3) vs package cache (Redis/SQLite) vs filesystem caches
 
 **Permissions / file access**
+
 - [#32411](https://github.com/renovatebot/renovate/discussions/32411) — EACCES writing repo cache JSON file on GitLab CI (resolved)
 - [#32317](https://github.com/renovatebot/renovate/discussions/32317) — EACCES on `__renovate-private-cache` after v38→v39 upgrade on GitLab CI (open)
 
 **Resilience**
+
 - [#37515](https://github.com/renovatebot/renovate/discussions/37515) — Crash from corrupt repo cache (`rawItems is not iterable`, with log line `RepoCacheBase.load() - expecting data of type 'string' received 'object'`)
 - [#41752](https://github.com/renovatebot/renovate/discussions/41752) — Renovate crashes (FATAL) when Redis is unreachable, instead of treating it as a cache miss
 
@@ -321,16 +341,19 @@ Here's a summary of the cache-related questions found in the database, grouped b
 ## Package Cache questions
 
 **TTL / invalidation**
+
 - [#42535](https://github.com/renovatebot/renovate/discussions/42535) — "How can I invalidate the config cache?" — user confused about HTTP cache TTL when debugging, doesn't know how to force a refresh
 - [#41320](https://github.com/renovatebot/renovate/discussions/41320) — `cacheTtlOverride` not respected for `datasource-maven:cache-provider` because the cache is initialised before config is loaded
 - [#36290](https://github.com/renovatebot/renovate/discussions/36290) — Docs say docker tags TTL default is 60 min, but code shows 30 min — requests a doc fix for `cacheTtlOverride`
 
 **Correctness / poisoning**
+
 - [#42792](https://github.com/renovatebot/renovate/discussions/42792) — npm datasource caches private packages from registries that omit `Cache-Control` (e.g. GitHub Packages), causing stale-version issues
 - [#40718](https://github.com/renovatebot/renovate/discussions/40718) — Cache poisoning: a `null` digest result caused by bad `hostRules` gets cached and then served to unrelated repos sharing Redis
 
 **General "what caches does Renovate have?"**
-- [#33612](https://github.com/renovatebot/renovate/discussions/33612) *(also listed above)* — asks what's in `$RENOVATE_CACHE_DIR/others/npm`, why it grows to 20GB+, and whether persisting it in CI is still worthwhile when S3+Redis are configured
+
+- [#33612](https://github.com/renovatebot/renovate/discussions/33612) _(also listed above)_ — asks what's in `$RENOVATE_CACHE_DIR/others/npm`, why it grows to 20GB+, and whether persisting it in CI is still worthwhile when S3+Redis are configured
 
 ---
 
@@ -342,4 +365,4 @@ Here's a summary of the cache-related questions found in the database, grouped b
 4. **TTL defaults and how to override them** (`cacheTtlOverride`, `cacheHardTtlMinutes`) — the defaults are underdocumented and apparently sometimes wrong in the docs
 5. **Filesystem cache (`$RENOVATE_CACHE_DIR`)** — what lives there, whether it's safe to clear/not persist in CI alongside Redis+S3, and how it relates to the npm tool cache
 6. **Cache invalidation** — there's no manual invalidation button; the only options are TTL expiry, clearing the storage, or working around with `dryRun`
-````
+```
