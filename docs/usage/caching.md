@@ -75,15 +75,22 @@ Renovate uses 3 types of cache:
 
 The In-Memory Cache includes any short-lived data which is worth caching within a given Renovate run (for a single repo or against multiple), but is not worth persisting for more long-term access.
 
+<!-- markdownlint-disable MD024 -->
+<!-- markdownlint-disable MD024 -->
+
 #### What is in it?
 
 Renovate stores **??**, for instance when retrieving HTTP-/npm-based config presets, getting the public key for a Hex registry or for listing status checks on a GitHub branch.
+
+<!-- markdownlint-disable MD024 -->
 
 #### Where is it stored?
 
 In-memory.
 
 As soon as the Renovate process exits, all data is lost.
+
+<!-- markdownlint-disable MD024 -->
 
 #### Which options configure it?
 
@@ -100,6 +107,8 @@ The Repository Cache is primarily aimed at reducing the work that Renovate needs
     This only contains **metadata** about the repository, not the repository itself.
     <br>
     This includes similar data to what Renovate logs at `DEBUG` log level.
+
+<!-- markdownlint-disable MD024 -->
 
 #### What is in it?
 
@@ -118,6 +127,8 @@ This cache includes (among other information):
 
 This generally allows Renovate to not need to perform potentially expensive work (like extracting all package files in a repository) if the repository has not changed.
 
+<!-- markdownlint-disable MD024 -->
+
 #### Where is it stored?
 
 By default, there is no Repository Cache as [`repositoryCache=disabled`](./self-hosted-configuration.md#repositorycache) is the default.
@@ -126,22 +137,28 @@ If enabled, this cache data is stored by default in the local filesystem, under 
 
 It can be configured to be stored in an S3-compatible location using i.e. [`repositoryCacheType=s3://my-bucket/some-path/repo-cache`](./self-hosted-configuration.md#repositorycachetype).
 
+<!-- markdownlint-disable MD024 -->
+
 #### Which options configure it?
 
-- [`repositoryCache`](./self-hosted-configuration.md#repositorycachetype): whether to enable it
+- [`repositoryCache`](./self-hosted-configuration.md#repositorycachetype): whether to enable the Repository Cache
 - [`repositoryCacheType`](./self-hosted-configuration.md#repositorycachetype): where the Repository Cache should be stored
-- [`repositoryCacheForceLocal`](./self-hosted-configuration.md#repositorycachetype): whether to also persist it to the local filesystem if using `repositoryCacheType=s3://...`
+- [`repositoryCacheForceLocal`](./self-hosted-configuration.md#repositorycacheforcelocal): whether to also persist it to the local filesystem if using `repositoryCacheType=s3://...`
+- [`httpCacheTtlDays`](./self-hosted-configuration.md#httpcachettldays): how many days a cached HTTP response should stay in the Repository Cache for
 
 ### Package Cache
 
 The Package Cache includes metadata about package releases, their changelogs, and HTTP responses from [Datasources](./modules/datasource/index.md).
 
 The Package Cache is primarily aimed at improving quality-of-life for upstream providers, such as package registries.
-This is the most important lever that a self-hosted administrator has to **??**.
 
 <!-- prettier-ignore -->
 !!! tip
-    Tuning this **??** is a very **??**, and that helps keep the ecosystem **??**.
+    The Package Cache is one of the most important areas to configure as a self-hosted Administrator.
+    <br>
+    Not only does this reduce the time taken for Renovate to run, but it also helps reduce the burden on public package registries.
+
+<!-- markdownlint-disable MD024 -->
 
 #### What is in it?
 
@@ -154,6 +171,8 @@ The Package Cache contains:
 - GitHub GraphQL data for GitHub releases/tags
     - If the repo is public, any tags/releases will be stored in the cache
     - If the repo is private, any tags/releases will be cached in-memory in the Renovate process (and subsequent Renovate runs will need to re-fetch the data)
+
+<!-- markdownlint-disable MD024 -->
 
 #### Where is it stored?
 
@@ -169,6 +188,8 @@ When the [`redisUrl`](./self-hosted-configuration.md#redisurl) self-hosted confi
 
 Renovate has experimental support for using SQLite as the Package Cache backend, which can be configured using [`RENOVATE_X_SQLITE_PACKAGE_CACHE`](./self-hosted-experimental.md#renovate_x_sqlite_package_cache).
 
+<!-- markdownlint-disable MD024 -->
+
 #### Which options configure it?
 
 - [`redisUrl`](./self-hosted-configuration.md#redisurl)
@@ -177,6 +198,7 @@ Renovate has experimental support for using SQLite as the Package Cache backend,
 - [`cacheTtlOverride`](./self-hosted-configuration.md#cachettloverride)
 - [`cacheHardTtlMinutes`](./self-hosted-configuration.md#cachehardttlminutes)
 - [`prCacheSyncMaxPages`](./self-hosted-configuration.md#prcachesyncmaxpages)
+- [`cachePrivatePackages`](./self-hosted-configuration.md#cacheprivatepackages)
 - [`RENOVATE_X_SQLITE_PACKAGE_CACHE`](./self-hosted-experimental.md#renovate_x_sqlite_package_cache).
 - [`RENOVATE_X_SQLITE_BUSY_TIMEOUT`](./self-hosted-experimental.md#renovate_x_sqlite_busy_timeout)
 
@@ -186,17 +208,22 @@ Renovate has experimental support for using SQLite as the Package Cache backend,
 
 ## Recommended performance improvements
 
-**??**
-
-For instance, users
-
-For topology:
-
-```mermaid
-
-```
+1. Strongly recommended: Set the Package Cache **??**
+1. Preferably: Set the Repository Cache
 
 ## FAQs
+
+### How much memory should I use for my Package Cache?
+
+🤷
+
+### Why does Renovate attempt to categorise **??**?
+
+In cases where **??**, this can **??**.
+
+In some self-hosted environments (such as for a company's **??**), it is safe **??**.
+
+However, because it could lead to information **??** that may not be intended, especially if running **??**, it is**??**.
 
 ### What's the difference between the "soft" and "hard" cache?
 
@@ -380,3 +407,5 @@ Here's a summary of the cache-related questions found in the database, grouped b
 5. **Filesystem cache (`$RENOVATE_CACHE_DIR`)** — what lives there, whether it's safe to clear/not persist in CI alongside Redis+S3, and how it relates to the npm tool cache
 6. **Cache invalidation** — there's no manual invalidation button; the only options are TTL expiry, clearing the storage, or working around with `dryRun`
 ```
+
+- [ ] `httpCacheDays`
